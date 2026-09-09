@@ -12,6 +12,7 @@ google-services.json
 GoogleService-Info.plist
 
 # IDE and operating system
+.mobile-git-backup/
 .idea/
 .vscode/
 *.iml

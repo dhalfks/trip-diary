@@ -64,3 +64,10 @@ npm run check
 ```
 
 Do not commit `.env` files or production credentials.
+
+## Mobile authentication
+
+The Expo app stores access and refresh tokens in `expo-secure-store` on iOS and Android.
+It restores the session at startup and performs one synchronized refresh when an API request
+returns `401`. Copy `mobile/.env.example` to `mobile/.env` and choose the API host for the
+target device before starting Expo.
