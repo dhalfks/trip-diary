@@ -1,0 +1,70 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# IDE and operating system
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+
+# Backend
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+backend/logs/
+backend/*.log
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-local.yaml
+
+# Mobile
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+mobile/web-build/
+mobile/.turbo/
+mobile/.cache/
+mobile/npm-debug.log*
+mobile/yarn-debug.log*
+mobile/yarn-error.log*
+mobile/.npm/
+mobile/.env
+mobile/.env.*
+!mobile/.env.example
+
+# Native and signing files generated locally
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/debug.keystore
+mobile/android/app/release/
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/*.xcworkspace/xcuserdata/
+mobile/ios/*.xcodeproj/xcuserdata/
+
+# Test and coverage output
+coverage/
+*.coverage
+test-results/
+
+# Temporary files and logs
+*.log
+*.tmp
+*.temp

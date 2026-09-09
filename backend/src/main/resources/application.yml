@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: trip-diary-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/trip_diary}
+    username: ${DATABASE_USERNAME:trip_diary}
+    password: ${DATABASE_PASSWORD:change-me-for-local-development}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-migration-naming: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{traceId:-no-trace}] %logger{36} - %msg%n"
+
+app:
+  security:
+    bcrypt-strength: 12
+  jwt:
+    issuer: trip-diary-api
+    audience: trip-diary-mobile
+    access-secret: ${JWT_ACCESS_SECRET:trip-diary-local-access-secret-change-me}
+    refresh-secret: ${JWT_REFRESH_SECRET:trip-diary-local-refresh-secret-change-me}
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
