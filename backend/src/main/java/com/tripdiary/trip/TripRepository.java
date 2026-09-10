@@ -13,4 +13,6 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
 
     @EntityGraph(attributePaths = "days")
     Optional<Trip> findByIdAndUserId(UUID id, UUID userId);
+
+    boolean existsByIdAndUserId(UUID id, UUID userId);
 }

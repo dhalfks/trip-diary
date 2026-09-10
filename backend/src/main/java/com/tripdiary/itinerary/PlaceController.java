@@ -13,9 +13,14 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController @RequestMapping("/api/v1/trips/{tripId}/places") @SecurityRequirement(name = "bearerAuth")
 public class PlaceController {
-    private final PlaceService service;
-    public PlaceController(PlaceService service) { this.service = service; }
+    private final PlaceService service; private final PlaceSearchService searchService;
+    public PlaceController(PlaceService service, PlaceSearchService searchService) { this.service = service; this.searchService = searchService; }
     @GetMapping public List<PlaceResponse> list(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID tripId) { return service.list(userId(jwt), tripId); }
+    @GetMapping("/search")
+    public List<PlaceSearchResult> search(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID tripId,
+            @RequestParam @NotBlank @Size(min = 2, max = 100) String query) {
+        return searchService.search(userId(jwt), tripId, query);
+    }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public PlaceResponse create(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID tripId, @Valid @RequestBody PlaceRequest request) { return service.create(userId(jwt), tripId, request.command()); }
     @PutMapping("/{placeId}")

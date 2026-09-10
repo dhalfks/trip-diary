@@ -75,6 +75,16 @@ class ItineraryIntegrationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PLACE_TRIP_MISMATCH"));
     }
 
+    @Test void protectsPlaceSearchAndReportsMissingProviderConfiguration() throws Exception {
+        mvc.perform(get("/api/v1/trips/{tripId}/places/search", trip.getId()).with(jwtFor(ownerId)).param("query", "경복궁"))
+                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("PLACE_SEARCH_UNAVAILABLE"));
+        UUID stranger = users.saveAndFlush(new User("search-stranger-" + UUID.randomUUID() + "@example.com", encoder.encode("password-123!"), "stranger")).getId();
+        mvc.perform(get("/api/v1/trips/{tripId}/places/search", trip.getId()).with(jwtFor(stranger)).param("query", "경복궁"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+        mvc.perform(get("/api/v1/trips/{tripId}/places/search", trip.getId()).with(jwtFor(ownerId)).param("query", "가"))
+                .andExpect(status().isBadRequest());
+    }
+
     private String createItem(UUID dayId, String title, String start, String end, String placeId) throws Exception {
         String place = placeId == null ? "null" : "\"" + placeId + "\"";
         return body(mvc.perform(post("/api/v1/trips/{tripId}/days/{dayId}/itineraries", trip.getId(), dayId).with(jwtFor(ownerId)).contentType(MediaType.APPLICATION_JSON)

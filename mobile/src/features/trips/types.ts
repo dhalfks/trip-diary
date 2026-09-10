@@ -14,6 +14,9 @@ export type Place = {
   createdAt: string; updatedAt: string;
 };
 export type PlaceInput = Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'>;
+export type PlaceSearchResult = {
+  providerId: string; name: string; address: string; latitude: number; longitude: number;
+};
 export type Itinerary = {
   id: string; tripDayId: string; title: string; notes: string | null; startTime: string | null;
   endTime: string | null; sortOrder: number; place: Place | null; createdAt: string; updatedAt: string;

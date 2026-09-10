@@ -45,6 +45,9 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{traceId:-no-trace}] %logger{36} - %msg%n"
 
 app:
+  kakao:
+    local-api-url: https://dapi.kakao.com
+    rest-api-key: ${KAKAO_REST_API_KEY:}
   security:
     bcrypt-strength: 12
   jwt:

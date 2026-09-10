@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { errorMessage } from '@/lib/api';
 import type { Trip, TripInput } from './types';
+import { CalendarDatePicker } from './calendar-date-picker';
 import { TimezonePicker } from './timezone-picker';
 
 type Props = { mode: 'create' | 'edit'; initialTrip?: Trip; onSubmit(input: TripInput): Promise<Trip> };
@@ -28,6 +29,11 @@ export function TripFormScreen({ mode, initialTrip, onSubmit }: Props) {
   const [timezone, setTimezone] = useState(initialTrip?.timezone ?? defaultTimezone);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+
+  function changeStartDate(value: string) {
+    setStartDate(value);
+    if (endDate < value) setEndDate(value);
+  }
 
   async function submit() {
     const cleanTitle = title.trim();
@@ -55,8 +61,8 @@ export function TripFormScreen({ mode, initialTrip, onSubmit }: Props) {
         <Text style={styles.label}>여행 이름</Text>
         <TextInput value={title} onChangeText={setTitle} editable={!busy} maxLength={100} placeholder="예: 제주도 여름휴가" style={styles.input} />
         <View style={styles.row}>
-          <View style={styles.half}><Text style={styles.label}>시작일</Text><TextInput value={startDate} onChangeText={setStartDate} editable={!busy} placeholder="YYYY-MM-DD" style={styles.input} /></View>
-          <View style={styles.half}><Text style={styles.label}>종료일</Text><TextInput value={endDate} onChangeText={setEndDate} editable={!busy} placeholder="YYYY-MM-DD" style={styles.input} /></View>
+          <View style={styles.half}><Text style={styles.label}>시작일</Text><CalendarDatePicker label="시작일" value={startDate} onChange={changeStartDate} disabled={busy} /></View>
+          <View style={styles.half}><Text style={styles.label}>종료일</Text><CalendarDatePicker label="종료일" value={endDate} onChange={setEndDate} minimumDate={startDate} disabled={busy} /></View>
         </View>
         <Text style={styles.label}>여행지 타임존</Text>
         <TimezonePicker value={timezone} onChange={setTimezone} disabled={busy} />

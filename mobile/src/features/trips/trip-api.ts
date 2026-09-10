@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { DiaryEntry, DiaryEntryInput, Itinerary, ItineraryInput, Place, PlaceInput, Trip, TripInput, TripPage } from './types';
+import type { DiaryEntry, DiaryEntryInput, Itinerary, ItineraryInput, Place, PlaceInput, PlaceSearchResult, Trip, TripInput, TripPage } from './types';
 
 const jsonRequest = (method: 'POST' | 'PUT', body: TripInput): RequestInit => ({
   method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -19,6 +19,7 @@ function json(method: 'POST' | 'PUT', body: unknown): RequestInit {
 
 export const placeApi = {
   list: (tripId: string) => api<Place[]>(`/trips/${encodeURIComponent(tripId)}/places`),
+  search: (tripId: string, query: string) => api<PlaceSearchResult[]>(`/trips/${encodeURIComponent(tripId)}/places/search?query=${encodeURIComponent(query)}`),
   create: (tripId: string, input: PlaceInput) => api<Place>(`/trips/${encodeURIComponent(tripId)}/places`, json('POST', input)),
   update: (tripId: string, placeId: string, input: PlaceInput) => api<Place>(`/trips/${encodeURIComponent(tripId)}/places/${encodeURIComponent(placeId)}`, json('PUT', input)),
   remove: (tripId: string, placeId: string) => api<void>(`/trips/${encodeURIComponent(tripId)}/places/${encodeURIComponent(placeId)}`, { method: 'DELETE' }),
