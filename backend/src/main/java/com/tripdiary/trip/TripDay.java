@@ -38,6 +38,7 @@ public class TripDay extends BaseTimeEntity {
     }
 
     public UUID getId() { return id; }
+    public Trip getTrip() { return trip; }
     public LocalDate getDate() { return date; }
     public int getDayNumber() { return dayNumber; }
 }

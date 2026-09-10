@@ -1,84 +1,71 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenState } from '@/features/trips/screen-state';
-import { tripApi } from '@/features/trips/trip-api';
-import type { Trip } from '@/features/trips/types';
+import { itineraryApi, placeApi, tripApi } from '@/features/trips/trip-api';
+import type { Itinerary, ItineraryInput, Place, Trip } from '@/features/trips/types';
 import { errorMessage } from '@/lib/api';
+
+const topSafeAreaStyle = { flex: 1, backgroundColor: '#208AEF' } as const;
+const contentBackgroundStyle = { flex: 1, backgroundColor: '#F7FAFC' } as const;
+
+function normalizeTimeInput(value: string) {
+  const trimmed = value.trim();
+  if (!/^\d{1,2}$/.test(trimmed)) return trimmed;
+  const hour = Number(trimmed);
+  return hour >= 0 && hour <= 23 ? `${String(hour).padStart(2, '0')}:00` : trimmed;
+}
 
 export default function TripDetailScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const [trip, setTrip] = useState<Trip>(); const [selectedDayId, setSelectedDayId] = useState<string>();
-  const [loading, setLoading] = useState(true); const [error, setError] = useState<string>(); const [deleting, setDeleting] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!tripId) { setError('여행 식별자가 올바르지 않습니다.'); setLoading(false); return; }
-    try {
-      const result = await tripApi.get(tripId); setTrip(result);
-      setSelectedDayId(current => result.days.some(day => day.id === current) ? current : result.days[0]?.id); setError(undefined);
-    } catch (reason) { setError(errorMessage(reason)); } finally { setLoading(false); }
-  }, [tripId]);
+  const [trip, setTrip] = useState<Trip>(); const [dayId, setDayId] = useState<string>();
+  const [items, setItems] = useState<Itinerary[]>([]); const [places, setPlaces] = useState<Place[]>([]);
+  const [loading, setLoading] = useState(true); const [timelineLoading, setTimelineLoading] = useState(false); const [error, setError] = useState<string>();
+  const [editing, setEditing] = useState<Itinerary | null | undefined>(undefined);
+  const loadTrip = useCallback(async () => { if (!tripId) return; try { const result = await tripApi.get(tripId); setTrip(result); setDayId(current => result.days.some(day => day.id === current) ? current : result.days[0]?.id); setError(undefined); } catch (reason) { setError(errorMessage(reason)); } finally { setLoading(false); } }, [tripId]);
+  const loadTimeline = useCallback(async () => { if (!tripId || !dayId) return; setTimelineLoading(true); try { setItems(await itineraryApi.list(tripId, dayId)); setError(undefined); } catch (reason) { setError(errorMessage(reason)); } finally { setTimelineLoading(false); } }, [tripId, dayId]);
+  const loadPlaces = useCallback(async () => { if (tripId) try { setPlaces(await placeApi.list(tripId)); } catch { setPlaces([]); } }, [tripId]);
   useEffect(() => {
-    // The loader updates state only after its awaited API request settles.
+    // The loader updates state after its API request settles.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+    void loadTrip();
+  }, [loadTrip]);
+  useEffect(() => {
+    // The loader updates state after its API request settles.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadTimeline();
+  }, [loadTimeline]);
 
-  async function remove() {
-    if (!trip || deleting) return;
-    setDeleting(true);
-    try { await tripApi.remove(trip.id); router.replace('/home'); }
-    catch (reason) { Alert.alert('삭제하지 못했어요', errorMessage(reason)); }
-    finally { setDeleting(false); }
-  }
-  function confirmDelete() {
-    if (Platform.OS === 'web') { if (globalThis.confirm?.('이 여행과 날짜 정보를 삭제할까요?')) void remove(); return; }
-    Alert.alert('여행 삭제', '이 여행과 날짜 정보를 삭제할까요?', [
-      { text: '취소', style: 'cancel' }, { text: '삭제', style: 'destructive', onPress: () => void remove() },
-    ]);
-  }
+  async function removeTrip() { if (!trip) return; try { await tripApi.remove(trip.id); router.replace('/home'); } catch (reason) { Alert.alert('삭제하지 못했어요', errorMessage(reason)); } }
+  async function removeItem(item: Itinerary) { if (!tripId || !dayId) return; try { await itineraryApi.remove(tripId, dayId, item.id); await loadTimeline(); } catch (reason) { Alert.alert('일정을 삭제하지 못했어요', errorMessage(reason)); } }
+  async function move(index: number, direction: -1 | 1) { if (!tripId || !dayId) return; const target = index + direction; if (target < 0 || target >= items.length) return; const ids = items.map(item => item.id); [ids[index], ids[target]] = [ids[target], ids[index]]; try { setItems(await itineraryApi.reorder(tripId, dayId, ids)); } catch (reason) { Alert.alert('순서를 변경하지 못했어요', errorMessage(reason)); } }
+  async function openForm(item: Itinerary | null) { await loadPlaces(); setEditing(item); }
+  function confirmTripDelete() { if (Platform.OS === 'web') { if (globalThis.confirm?.('이 여행을 삭제할까요?')) void removeTrip(); } else Alert.alert('여행 삭제', '이 여행과 모든 일정을 삭제할까요?', [{ text: '취소' }, { text: '삭제', style: 'destructive', onPress: () => void removeTrip() }]); }
 
   if (loading) return <SafeAreaView style={styles.safe}><ScreenState loading title="여행을 불러오는 중이에요" /></SafeAreaView>;
-  if (error || !trip) return <SafeAreaView style={styles.safe}><ScreenState title="여행을 불러오지 못했어요" description={error} actionLabel="다시 시도" onAction={() => { setLoading(true); void load(); }} /></SafeAreaView>;
-  const selectedDay = trip.days.find(day => day.id === selectedDayId) ?? trip.days[0];
-
-  return <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-    <View style={styles.header}>
-      <Pressable onPress={() => router.replace('/home')} hitSlop={12}><Text style={styles.back}>‹ 목록</Text></Pressable>
-      <View style={styles.actions}>
-        <Pressable onPress={() => router.push({ pathname: '/trips/[tripId]/edit', params: { tripId: trip.id } })}><Text style={styles.edit}>수정</Text></Pressable>
-        <Pressable disabled={deleting} onPress={confirmDelete}><Text style={styles.delete}>{deleting ? '삭제 중' : '삭제'}</Text></Pressable>
-      </View>
-    </View>
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>{trip.timezone}</Text><Text style={styles.title}>{trip.title}</Text>
-      <Text style={styles.period}>{trip.startDate.replace(/-/g, '.')} — {trip.endDate.replace(/-/g, '.')}</Text>
-      <Text style={styles.sectionTitle}>여행 날짜</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>
-        {trip.days.map(day => {
-          const selected = day.id === selectedDay?.id;
-          return <Pressable key={day.id} onPress={() => setSelectedDayId(day.id)} style={[styles.day, selected && styles.selectedDay]}>
-            <Text style={[styles.dayNumber, selected && styles.selectedText]}>DAY {day.dayNumber}</Text>
-            <Text style={[styles.dayDate, selected && styles.selectedText]}>{day.date.slice(5).replace('-', '.')}</Text>
-          </Pressable>;
-        })}
-      </ScrollView>
-      {selectedDay ? <View style={styles.dayPanel}>
-        <Text style={styles.panelTitle}>DAY {selectedDay.dayNumber}</Text><Text style={styles.panelDate}>{selectedDay.date}</Text>
-        <Text style={styles.emptyTitle}>아직 등록된 일정이 없어요</Text><Text style={styles.emptyDescription}>날짜별 일정 관리는 다음 단계에서 연결됩니다.</Text>
-      </View> : null}
-    </ScrollView>
+  if (!trip) return <SafeAreaView style={styles.safe}><ScreenState title="여행을 불러오지 못했어요" description={error} actionLabel="다시 시도" onAction={() => void loadTrip()} /></SafeAreaView>;
+  const selectedDay = trip.days.find(day => day.id === dayId);
+  return <SafeAreaView style={topSafeAreaStyle} edges={['top', 'left', 'right']}>
+    <View style={styles.header}><Pressable onPress={() => router.replace('/home')}><Text style={styles.link}>‹ 목록</Text></Pressable><View style={styles.actions}><Pressable onPress={() => router.push({ pathname: '/trips/[tripId]/places', params: { tripId: trip.id } })}><Text style={styles.link}>장소</Text></Pressable><Pressable onPress={() => router.push({ pathname: '/trips/[tripId]/edit', params: { tripId: trip.id } })}><Text style={styles.link}>수정</Text></Pressable><Pressable onPress={confirmTripDelete}><Text style={styles.delete}>삭제</Text></Pressable></View></View>
+    <FlatList style={contentBackgroundStyle} data={items} keyExtractor={item => item.id} refreshing={timelineLoading} onRefresh={() => void loadTimeline()} contentContainerStyle={styles.content}
+      ListHeaderComponent={<><Text style={styles.timezone}>{trip.timezone}</Text><Text style={styles.title}>{trip.title}</Text><Text style={styles.period}>{trip.startDate} — {trip.endDate}</Text><Text style={styles.section}>여행 날짜</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>{trip.days.map(day => <Pressable key={day.id} onPress={() => setDayId(day.id)} style={[styles.day, day.id === dayId && styles.daySelected]}><Text style={[styles.dayText, day.id === dayId && styles.white]}>DAY {day.dayNumber}</Text><Text style={[styles.dayDate, day.id === dayId && styles.white]}>{day.date.slice(5)}</Text></Pressable>)}</ScrollView>
+        <View style={styles.timelineHeader}><View><Text style={styles.section}>일정 타임라인</Text><Text style={styles.selectedDate}>{selectedDay?.date}</Text></View><Pressable style={styles.addButton} onPress={() => void openForm(null)}><Text style={styles.addText}>＋ 일정</Text></Pressable></View>
+        {error ? <Pressable onPress={() => void loadTimeline()}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}</>}
+      ListEmptyComponent={!timelineLoading && !error ? <View style={styles.empty}><Text style={styles.emptyTitle}>아직 일정이 없어요</Text><Text style={styles.emptyText}>이 날짜의 첫 일정을 추가해 보세요.</Text></View> : null}
+      renderItem={({ item, index }) => <Pressable onPress={() => void openForm(item)} style={styles.item}><View style={styles.line}><View style={styles.dot} /><View style={styles.vertical} /></View><View style={styles.itemBody}><Text style={styles.itemTime}>{item.startTime ? `${item.startTime.slice(0, 5)} – ${item.endTime?.slice(0, 5)}` : '시간 미정'}</Text><Text style={styles.itemTitle}>{item.title}</Text>{item.place ? <Text style={styles.place}>⌖ {item.place.name}</Text> : null}{item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}</View><View><Pressable disabled={index === 0} onPress={() => void move(index, -1)}><Text style={[styles.order, index === 0 && styles.disabled]}>▲</Text></Pressable><Pressable disabled={index === items.length - 1} onPress={() => void move(index, 1)}><Text style={[styles.order, index === items.length - 1 && styles.disabled]}>▼</Text></Pressable><Pressable onPress={() => Alert.alert('일정 삭제', `${item.title}을(를) 삭제할까요?`, [{ text: '취소' }, { text: '삭제', style: 'destructive', onPress: () => void removeItem(item) }])}><Text style={styles.itemDelete}>삭제</Text></Pressable></View></Pressable>} />
+    {editing !== undefined && dayId ? <ItineraryForm tripId={trip.id} dayId={dayId} item={editing} places={places} onClose={() => setEditing(undefined)} onSaved={async () => { setEditing(undefined); await loadTimeline(); }} /> : null}
   </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F7FAFC' }, header: { height: 58, paddingHorizontal: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E7EBEF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { color: '#1677D2', fontSize: 16, fontWeight: '700' }, actions: { flexDirection: 'row', gap: 20 }, edit: { color: '#1677D2', fontWeight: '800' }, delete: { color: '#D92D20', fontWeight: '800' },
-  content: { padding: 24, paddingBottom: 48 }, eyebrow: { color: '#208AEF', fontSize: 13, fontWeight: '800' }, title: { color: '#17212B', fontSize: 32, fontWeight: '900', marginTop: 8 }, period: { color: '#65717E', fontSize: 16, marginTop: 10 },
-  sectionTitle: { color: '#17212B', fontSize: 19, fontWeight: '800', marginTop: 34, marginBottom: 14 }, days: { gap: 10, paddingRight: 24 },
-  day: { minWidth: 78, borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 14, backgroundColor: '#FFF', paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center' }, selectedDay: { borderColor: '#208AEF', backgroundColor: '#208AEF' },
-  dayNumber: { color: '#65717E', fontSize: 11, fontWeight: '800' }, dayDate: { color: '#17212B', fontSize: 16, fontWeight: '800', marginTop: 4 }, selectedText: { color: '#FFF' },
-  dayPanel: { marginTop: 22, minHeight: 220, borderWidth: 1, borderColor: '#E7EBEF', borderRadius: 18, backgroundColor: '#FFF', padding: 20 }, panelTitle: { color: '#208AEF', fontWeight: '900' }, panelDate: { color: '#33404D', fontSize: 18, fontWeight: '800', marginTop: 5 },
-  emptyTitle: { color: '#4E5D6C', fontWeight: '700', textAlign: 'center', marginTop: 50 }, emptyDescription: { color: '#8B96A1', fontSize: 13, textAlign: 'center', marginTop: 7 },
-});
+function ItineraryForm({ tripId, dayId, item, places, onClose, onSaved }: { tripId: string; dayId: string; item: Itinerary | null; places: Place[]; onClose(): void; onSaved(): Promise<void> }) {
+  const [title, setTitle] = useState(item?.title ?? ''); const [start, setStart] = useState(item?.startTime?.slice(0, 5) ?? ''); const [end, setEnd] = useState(item?.endTime?.slice(0, 5) ?? '');
+  const [notes, setNotes] = useState(item?.notes ?? ''); const [placeId, setPlaceId] = useState<string | null>(item?.place?.id ?? null); const [error, setError] = useState<string>(); const [busy, setBusy] = useState(false);
+  useEffect(() => { const timer = setTimeout(() => { const value = normalizeTimeInput(start); if (value !== start) setStart(value); }, 600); return () => clearTimeout(timer); }, [start]);
+  useEffect(() => { const timer = setTimeout(() => { const value = normalizeTimeInput(end); if (value !== end) setEnd(value); }, 600); return () => clearTimeout(timer); }, [end]);
+  async function save() { if (!title.trim()) return setError('일정 이름을 입력해 주세요.'); const normalizedStart = normalizeTimeInput(start); const normalizedEnd = normalizeTimeInput(end); setStart(normalizedStart); setEnd(normalizedEnd); const pattern = /^([01]\d|2[0-3]):[0-5]\d$/; if (!!normalizedStart !== !!normalizedEnd || (normalizedStart && (!pattern.test(normalizedStart) || !pattern.test(normalizedEnd) || normalizedEnd <= normalizedStart))) return setError('시간은 HH:mm 형식으로 입력하고 종료 시간을 더 늦게 설정해 주세요.'); const input: ItineraryInput = { title: title.trim(), notes: notes.trim() || null, startTime: normalizedStart ? `${normalizedStart}:00` : null, endTime: normalizedEnd ? `${normalizedEnd}:00` : null, placeId }; setBusy(true); try { if (item) await itineraryApi.update(tripId, dayId, item.id, input); else await itineraryApi.create(tripId, dayId, input); await onSaved(); } catch (reason) { setError(errorMessage(reason)); } finally { setBusy(false); } }
+  return <Modal visible animationType="slide" onRequestClose={onClose}><SafeAreaView style={styles.safe}><View style={styles.header}><Pressable onPress={onClose}><Text style={styles.link}>취소</Text></Pressable><Text style={styles.modalTitle}>{item ? '일정 수정' : '일정 추가'}</Text><Pressable disabled={busy} onPress={() => void save()}><Text style={styles.link}>{busy ? '저장 중' : '저장'}</Text></Pressable></View><ScrollView contentContainerStyle={styles.form}><Text style={styles.label}>일정 이름</Text><TextInput style={styles.input} value={title} onChangeText={setTitle} maxLength={120} placeholder="예: 경복궁 관람" /><View style={styles.formRow}><View style={styles.half}><Text style={styles.label}>시작 시간</Text><TextInput style={styles.input} value={start} onChangeText={setStart} placeholder="09:00" /></View><View style={styles.half}><Text style={styles.label}>종료 시간</Text><TextInput style={styles.input} value={end} onChangeText={setEnd} placeholder="11:00" /></View></View><Text style={styles.label}>장소</Text><ScrollView horizontal contentContainerStyle={styles.placeOptions}><Pressable onPress={() => setPlaceId(null)} style={[styles.placeChip, !placeId && styles.placeSelected]}><Text style={!placeId && styles.white}>선택 안 함</Text></Pressable>{places.map(place => <Pressable key={place.id} onPress={() => setPlaceId(place.id)} style={[styles.placeChip, placeId === place.id && styles.placeSelected]}><Text style={placeId === place.id && styles.white}>{place.name}</Text></Pressable>)}</ScrollView><Text style={styles.label}>메모</Text><TextInput style={[styles.input, styles.memo]} multiline value={notes} onChangeText={setNotes} maxLength={1000} placeholder="예약 정보나 메모를 입력하세요." />{error ? <Text style={styles.error}>{error}</Text> : null}</ScrollView></SafeAreaView></Modal>;
+}
+
+const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: '#F7FAFC' }, header: { height: 58, paddingHorizontal: 18, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E7EBEF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, actions: { flexDirection: 'row', gap: 16 }, link: { color: '#1677D2', fontWeight: '800' }, delete: { color: '#D92D20', fontWeight: '800' }, content: { padding: 22, paddingBottom: 60 }, timezone: { color: '#208AEF', fontWeight: '800' }, title: { color: '#17212B', fontSize: 30, fontWeight: '900', marginTop: 6 }, period: { color: '#65717E', marginTop: 8 }, section: { color: '#17212B', fontSize: 18, fontWeight: '800', marginTop: 28 }, days: { gap: 9, paddingTop: 12 }, day: { borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 12, padding: 11, alignItems: 'center', backgroundColor: '#FFF' }, daySelected: { backgroundColor: '#208AEF', borderColor: '#208AEF' }, dayText: { color: '#65717E', fontSize: 11, fontWeight: '800' }, dayDate: { color: '#17212B', fontWeight: '800', marginTop: 3 }, white: { color: '#FFF' }, timelineHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }, selectedDate: { color: '#7A8794', marginTop: 3 }, addButton: { backgroundColor: '#208AEF', borderRadius: 11, paddingHorizontal: 15, paddingVertical: 10 }, addText: { color: '#FFF', fontWeight: '800' }, empty: { alignItems: 'center', paddingVertical: 45, backgroundColor: '#FFF', borderRadius: 16 }, emptyTitle: { color: '#33404D', fontWeight: '800' }, emptyText: { color: '#8B96A1', marginTop: 6 }, item: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 15, padding: 16, marginBottom: 11, borderWidth: 1, borderColor: '#E7EBEF' }, line: { width: 22, alignItems: 'center' }, dot: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#208AEF', marginTop: 5 }, vertical: { width: 2, flex: 1, backgroundColor: '#D9EBFC', marginTop: 4 }, itemBody: { flex: 1 }, itemTime: { color: '#1677D2', fontSize: 13, fontWeight: '800' }, itemTitle: { color: '#17212B', fontSize: 17, fontWeight: '800', marginTop: 4 }, place: { color: '#526273', marginTop: 6 }, notes: { color: '#7A8794', marginTop: 5 }, order: { color: '#526273', padding: 4 }, disabled: { opacity: 0.2 }, itemDelete: { color: '#D92D20', fontSize: 12, paddingTop: 5 }, error: { color: '#B42318', backgroundColor: '#FFF0F0', padding: 11, borderRadius: 9 }, modalTitle: { color: '#17212B', fontSize: 18, fontWeight: '800' }, form: { padding: 22, gap: 9 }, label: { color: '#33404D', fontWeight: '700', marginTop: 7 }, input: { minHeight: 50, borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 11, paddingHorizontal: 13, backgroundColor: '#FFF', fontSize: 15 }, formRow: { flexDirection: 'row', gap: 10 }, half: { flex: 1, gap: 7 }, placeOptions: { gap: 8 }, placeChip: { borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: '#FFF' }, placeSelected: { backgroundColor: '#208AEF', borderColor: '#208AEF' }, memo: { minHeight: 110, paddingTop: 12, textAlignVertical: 'top' } });
