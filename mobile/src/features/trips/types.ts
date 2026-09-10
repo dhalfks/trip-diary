@@ -19,3 +19,12 @@ export type Itinerary = {
   endTime: string | null; sortOrder: number; place: Place | null; createdAt: string; updatedAt: string;
 };
 export type ItineraryInput = { title: string; notes: string | null; startTime: string | null; endTime: string | null; placeId: string | null };
+export type DiaryEntryLink = { id: string; name: string };
+export type DiaryEntry = {
+  id: string; tripDayId: string; title: string; content: string;
+  itinerary: DiaryEntryLink | null; place: DiaryEntryLink | null;
+  createdAt: string; updatedAt: string;
+};
+export type DiaryEntryInput = {
+  title: string; content: string; itineraryId: string | null; placeId: string | null;
+};

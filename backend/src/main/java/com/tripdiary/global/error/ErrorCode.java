@@ -21,6 +21,8 @@ public enum ErrorCode {
     INVALID_ITINERARY_ORDER(HttpStatus.BAD_REQUEST, "일정 정렬 정보가 올바르지 않습니다."),
     PLACE_TRIP_MISMATCH(HttpStatus.BAD_REQUEST, "해당 여행에 속한 장소만 일정에 연결할 수 있습니다."),
     INVALID_PLACE_COORDINATES(HttpStatus.BAD_REQUEST, "위도와 경도는 함께 입력해야 합니다."),
+    DIARY_ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "여행 기록을 찾을 수 없습니다."),
+    DIARY_ENTRY_LINK_MISMATCH(HttpStatus.BAD_REQUEST, "같은 여행 날짜의 일정과 장소만 기록에 연결할 수 있습니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "허용되지 않은 HTTP 메서드입니다."),
     BUSINESS_ERROR(HttpStatus.CONFLICT, "요청을 현재 상태에서 처리할 수 없습니다."),
