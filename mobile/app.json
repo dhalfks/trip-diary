@@ -36,6 +36,14 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "여행 기록에 첨부할 사진을 선택합니다.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "expo-font",
       "expo-image",
       "expo-status-bar",

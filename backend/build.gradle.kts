@@ -18,6 +18,12 @@ repositories {
 }
 
 dependencies {
+	implementation(platform("software.amazon.awssdk:bom:2.54.16"))
+	implementation("software.amazon.awssdk:s3") {
+		exclude(group = "software.amazon.awssdk", module = "apache-client")
+		exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+	}
+	implementation("software.amazon.awssdk:url-connection-client")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")

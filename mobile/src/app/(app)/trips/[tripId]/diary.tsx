@@ -7,6 +7,8 @@ import { ScreenState } from '@/features/trips/screen-state';
 import { diaryApi, itineraryApi, placeApi, tripApi } from '@/features/trips/trip-api';
 import type { DiaryEntry, DiaryEntryInput, Itinerary, Place, Trip } from '@/features/trips/types';
 import { errorMessage } from '@/lib/api';
+import { ImageUploadModal } from '@/features/images/image-upload-modal';
+import { ImageGallery } from '@/features/images/image-gallery';
 
 const topSafeAreaStyle = { flex: 1, backgroundColor: '#208AEF' } as const;
 const bodyStyle = { flex: 1, backgroundColor: '#F7FAFC' } as const;
@@ -22,6 +24,9 @@ export default function DiaryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState<DiaryEntry | null | undefined>(undefined);
+  const [photoEntry, setPhotoEntry] = useState<DiaryEntry>();
+  const [imageVersions, setImageVersions] = useState<Record<string, number>>({});
+  const [imageRefresh, setImageRefresh] = useState(0);
 
   const loadTrip = useCallback(async () => {
     if (!tripId) return;
@@ -37,7 +42,7 @@ export default function DiaryScreen() {
   const loadEntries = useCallback(async () => {
     if (!tripId || !dayId) return;
     setRefreshing(true);
-    try { setEntries(await diaryApi.list(tripId, dayId)); setError(undefined); }
+    try { setEntries(await diaryApi.list(tripId, dayId)); setImageRefresh(current => current + 1); setError(undefined); }
     catch (reason) { setError(errorMessage(reason)); }
     finally { setRefreshing(false); }
   }, [tripId, dayId]);
@@ -76,8 +81,9 @@ export default function DiaryScreen() {
     <FlatList style={bodyStyle} data={entries} keyExtractor={item => item.id} refreshing={refreshing} onRefresh={() => void loadEntries()} contentContainerStyle={styles.content}
       ListHeaderComponent={<><Text style={styles.tripTitle}>{trip.title}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>{trip.days.map(day => <Pressable key={day.id} onPress={() => setDayId(day.id)} style={[styles.day, day.id === dayId && styles.selected]}><Text style={[styles.dayLabel, day.id === dayId && styles.white]}>DAY {day.dayNumber}</Text><Text style={[styles.dayDate, day.id === dayId && styles.white]}>{day.date.slice(5)}</Text></Pressable>)}</ScrollView><View style={styles.sectionRow}><View><Text style={styles.section}>날짜별 기록</Text><Text style={styles.date}>{selectedDay?.date}</Text></View><Pressable style={styles.addButton} onPress={() => setEditing(null)}><Text style={styles.addText}>＋ 기록</Text></Pressable></View>{error ? <Pressable onPress={() => void loadEntries()}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}</>}
       ListEmptyComponent={!refreshing && !error ? <View style={styles.empty}><Text style={styles.emptyTitle}>아직 기록이 없어요</Text><Text style={styles.emptyText}>오늘의 기억을 잊기 전에 남겨 보세요.</Text></View> : null}
-      renderItem={({ item }) => <Pressable onPress={() => setEditing(item)} style={styles.card}><View style={styles.cardTop}><Text style={styles.cardTitle}>{item.title}</Text><Pressable onPress={() => confirmDelete(item)}><Text style={styles.delete}>삭제</Text></Pressable></View><Text numberOfLines={3} style={styles.preview}>{item.content}</Text><View style={styles.tags}>{item.itinerary ? <Text style={styles.tag}>일정 · {item.itinerary.name}</Text> : null}{item.place ? <Text style={styles.tag}>장소 · {item.place.name}</Text> : null}</View><Text style={styles.updated}>{new Date(item.updatedAt).toLocaleString()}</Text></Pressable>} />
+      renderItem={({ item }) => <Pressable onPress={() => setEditing(item)} style={styles.card}><View style={styles.cardTop}><Text style={styles.cardTitle}>{item.title}</Text><Pressable onPress={() => confirmDelete(item)}><Text style={styles.delete}>삭제</Text></Pressable></View><Text numberOfLines={3} style={styles.preview}>{item.content}</Text><View style={styles.tags}>{item.itinerary ? <Text style={styles.tag}>일정 · {item.itinerary.name}</Text> : null}{item.place ? <Text style={styles.tag}>장소 · {item.place.name}</Text> : null}</View><Text style={styles.updated}>{new Date(item.updatedAt).toLocaleString()}</Text><ImageGallery target={{ tripId: trip.id, dayId: item.tripDayId, entryId: item.id }} refreshKey={`${imageRefresh}:${imageVersions[item.id] ?? 0}`} /><Pressable accessibilityRole="button" onPress={event => { event.stopPropagation(); setPhotoEntry(item); }}><Text style={styles.photoLink}>＋ 사진 추가</Text></Pressable></Pressable>} />
     {editing !== undefined && dayId ? <DiaryEditor tripId={trip.id} dayId={dayId} entry={editing} onClose={() => setEditing(undefined)} onSaved={async () => { setEditing(undefined); await loadEntries(); }} /> : null}
+    {photoEntry ? <ImageUploadModal key={photoEntry.id} target={{ tripId: trip.id, dayId: photoEntry.tripDayId, entryId: photoEntry.id }} title={photoEntry.title} onClose={() => setPhotoEntry(undefined)} onUploaded={() => setImageVersions(current => ({ ...current, [photoEntry.id]: (current[photoEntry.id] ?? 0) + 1 }))} /> : null}
   </SafeAreaView>;
 }
 
@@ -150,6 +156,7 @@ function DiaryEditor({ tripId, dayId, entry, onClose, onSaved }: { tripId: strin
     {restored ? <View style={styles.restored}><Text style={styles.restoredText}>저장된 초안을 복구했어요.</Text><Pressable onPress={() => void discardDraft()}><Text style={styles.delete}>초안 삭제</Text></Pressable></View> : <Text style={styles.autoSave}>입력 내용은 이 기기에 자동 저장됩니다.</Text>}
     <Text style={styles.label}>제목</Text><TextInput style={styles.input} value={draft.title} onChangeText={title => setDraft(current => ({ ...current, title }))} maxLength={120} placeholder="오늘의 기억을 한 줄로 남겨 보세요" />
     <Text style={styles.label}>내용</Text><TextInput style={[styles.input, styles.contentInput]} value={draft.content} onChangeText={content => setDraft(current => ({ ...current, content }))} maxLength={20000} multiline textAlignVertical="top" placeholder="여행 중 느낀 점과 기억을 자유롭게 기록하세요." />
+    {!entry ? <Text style={styles.autoSave}>기록을 저장한 뒤 목록의 ‘사진 추가’를 눌러 주세요.</Text> : null}
     <Text style={styles.label}>일정 연결 (선택)</Text><ScrollView horizontal contentContainerStyle={styles.options}><Choice label="연결 안 함" selected={!draft.itineraryId} onPress={() => setDraft(current => ({ ...current, itineraryId: null }))} />{itineraries.map(item => <Choice key={item.id} label={item.title} selected={draft.itineraryId === item.id} onPress={() => setDraft(current => ({ ...current, itineraryId: item.id }))} />)}</ScrollView>
     <Text style={styles.label}>장소 연결 (선택)</Text><ScrollView horizontal contentContainerStyle={styles.options}><Choice label="연결 안 함" selected={!draft.placeId} onPress={() => setDraft(current => ({ ...current, placeId: null }))} />{places.map(place => <Choice key={place.id} label={place.name} selected={draft.placeId === place.id} onPress={() => setDraft(current => ({ ...current, placeId: place.id }))} />)}</ScrollView>
     {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -161,5 +168,6 @@ function Choice({ label, selected, onPress }: { label: string; selected: boolean
 }
 
 const styles = StyleSheet.create({
+  photoLink: { color: '#1677D2', fontWeight: '700', paddingTop: 14, paddingBottom: 4 },
   safe: { flex: 1, backgroundColor: '#F7FAFC' }, header: { height: 58, paddingHorizontal: 18, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E7EBEF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, headerTitle: { color: '#17212B', fontSize: 18, fontWeight: '800' }, link: { color: '#1677D2', fontWeight: '800' }, content: { padding: 22, paddingBottom: 60 }, tripTitle: { color: '#17212B', fontSize: 27, fontWeight: '900' }, days: { gap: 9, paddingTop: 16 }, day: { borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 12, padding: 11, alignItems: 'center', backgroundColor: '#FFF' }, selected: { backgroundColor: '#208AEF', borderColor: '#208AEF' }, dayLabel: { color: '#65717E', fontSize: 11, fontWeight: '800' }, dayDate: { color: '#17212B', fontWeight: '800', marginTop: 3 }, white: { color: '#FFF' }, sectionRow: { marginTop: 27, marginBottom: 14, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }, section: { color: '#17212B', fontSize: 18, fontWeight: '800' }, date: { color: '#7A8794', marginTop: 3 }, addButton: { backgroundColor: '#208AEF', borderRadius: 11, paddingHorizontal: 15, paddingVertical: 10 }, addText: { color: '#FFF', fontWeight: '800' }, empty: { alignItems: 'center', paddingVertical: 45, backgroundColor: '#FFF', borderRadius: 16 }, emptyTitle: { color: '#33404D', fontWeight: '800' }, emptyText: { color: '#8B96A1', marginTop: 6 }, card: { padding: 17, marginBottom: 11, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E7EBEF', borderRadius: 15 }, cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 }, cardTitle: { flex: 1, color: '#17212B', fontSize: 17, fontWeight: '800' }, preview: { color: '#526273', lineHeight: 21, marginTop: 9 }, tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 11 }, tag: { color: '#1677D2', backgroundColor: '#EAF4FE', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, fontSize: 12, fontWeight: '700' }, updated: { color: '#98A2AD', fontSize: 11, marginTop: 10 }, delete: { color: '#D92D20', fontWeight: '700' }, form: { padding: 22, paddingBottom: 60, gap: 9 }, autoSave: { color: '#65717E', fontSize: 13, marginBottom: 5 }, restored: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#EAF4FE', borderRadius: 10, padding: 12 }, restoredText: { color: '#1677D2', fontWeight: '700' }, label: { color: '#33404D', fontWeight: '700', marginTop: 9 }, input: { minHeight: 50, borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 11, paddingHorizontal: 13, backgroundColor: '#FFF', fontSize: 15 }, contentInput: { minHeight: 260, paddingTop: 13 }, options: { gap: 8 }, choice: { borderWidth: 1, borderColor: '#D7DBE0', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9, backgroundColor: '#FFF' }, choiceText: { color: '#33404D' }, error: { color: '#B42318', backgroundColor: '#FFF0F0', padding: 11, borderRadius: 9 },
 });

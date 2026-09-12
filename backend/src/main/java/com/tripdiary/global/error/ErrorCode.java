@@ -3,6 +3,10 @@ package com.tripdiary.global.error;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다."),
+    IMAGE_UPLOAD_NOT_READY(HttpStatus.CONFLICT, "업로드된 이미지를 확인할 수 없습니다."),
+    IMAGE_UPLOAD_MISMATCH(HttpStatus.CONFLICT, "업로드된 파일의 크기 또는 형식이 등록 정보와 다릅니다."),
+    IMAGE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "이미지 저장소를 일시적으로 사용할 수 없습니다."),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "요청 값이 올바르지 않습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청을 처리할 수 없습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
