@@ -8,5 +8,7 @@ export default function AppLayout() {
     <Stack.Screen name="trips/[tripId]/edit" options={{ presentation: 'modal' }} />
     <Stack.Screen name="trips/[tripId]/places" options={{ presentation: 'modal' }} />
     <Stack.Screen name="trips/[tripId]/diary" />
+    <Stack.Screen name="trips/[tripId]/diaries" />
+    <Stack.Screen name="trips/[tripId]/diaries/[diaryId]" />
   </Stack>;
 }

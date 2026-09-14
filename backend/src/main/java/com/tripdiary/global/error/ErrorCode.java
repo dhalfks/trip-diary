@@ -3,6 +3,10 @@ package com.tripdiary.global.error;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    DIARY_NOT_FOUND(HttpStatus.NOT_FOUND, "생성된 다이어리를 찾을 수 없습니다."),
+    DIARY_COVER_INVALID(HttpStatus.BAD_REQUEST, "이 여행의 업로드 완료된 사진을 대표 이미지로 선택해 주세요."),
+    DIARY_LIMIT_REACHED(HttpStatus.CONFLICT, "여행당 다이어리는 최대 5개까지 보관할 수 있습니다. 기존 결과를 삭제한 후 다시 생성해 주세요."),
+    DIARY_TOO_LARGE(HttpStatus.BAD_REQUEST, "생성 가능한 다이어리 페이지 수는 최대 500페이지입니다."),
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다."),
     IMAGE_UPLOAD_NOT_READY(HttpStatus.CONFLICT, "업로드된 이미지를 확인할 수 없습니다."),
     IMAGE_UPLOAD_MISMATCH(HttpStatus.CONFLICT, "업로드된 파일의 크기 또는 형식이 등록 정보와 다릅니다."),
