@@ -8,7 +8,7 @@ import { imageApi } from './image-api';
 import { preparePhoto } from './photo-file';
 import { putImage } from './s3-upload';
 import type { ImageTarget, UploadItem, UploadPhase } from './types';
-import { uploadImage } from './upload-flow';
+import { isRateLimited, uploadImage } from './upload-flow';
 
 const labels: Record<UploadPhase, string> = {
   queued: '업로드 대기', signing: '업로드 준비 중', uploading: '사진 전송 중',
@@ -51,7 +51,7 @@ export function ImageUploadModal({ target, title, onClose, onUploaded }: { targe
         if (abort.signal.aborted) break;
         const item = queue.current.find(candidate => candidate.id === id);
         if (!item || item.phase === 'success') continue;
-        patch(id, { error: undefined });
+        patch(id, { error: undefined, rateLimited: false });
         try {
           await uploadImage(item.file, item.checkpoint, {
             initiate: file => imageApi.initiate(target, file),
@@ -60,7 +60,8 @@ export function ImageUploadModal({ target, title, onClose, onUploaded }: { targe
           }, (phase, progress) => { if (mounted.current) patch(id, { phase, progress: progress ?? 0 }); }, abort.signal);
           if (mounted.current) onUploaded?.();
         } catch (reason) {
-          if (mounted.current) patch(id, { phase: 'error', error: errorMessage(reason) });
+          if (mounted.current) patch(id, { phase: 'error', error: errorMessage(reason), rateLimited: isRateLimited(reason) });
+          if (isRateLimited(reason)) break;
         }
       }
     } finally {
@@ -108,18 +109,18 @@ export function ImageUploadModal({ target, title, onClose, onUploaded }: { targe
   const finished = items.filter(item => item.phase === 'success').length;
   return <Modal visible animationType="slide" onRequestClose={close}>
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}><Text style={styles.heading}>기록에 사진 추가</Text><Pressable accessibilityRole="button" disabled={busy || picking} onPress={close}><Text style={[styles.link, (busy || picking) && styles.disabled]}>닫기</Text></Pressable></View>
+      <View style={styles.header}><Text accessibilityRole="header" style={styles.heading}>기록에 사진 추가</Text><Pressable accessibilityRole="button" accessibilityLabel="사진 업로드 화면 닫기" hitSlop={10} disabled={busy || picking} onPress={close}><Text style={[styles.link, (busy || picking) && styles.disabled]}>닫기</Text></Pressable></View>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.help}>한 번에 최대 10장 · 사진 한 장당 10MB 이하</Text>
-        <Pressable accessibilityRole="button" disabled={busy || picking} onPress={() => void pick()} style={[styles.select, (busy || picking) && styles.disabled]}><Text style={styles.selectText}>{picking ? '사진 선택 중…' : '＋ 사진 선택'}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="업로드할 사진 선택" accessibilityState={{ disabled: busy || picking, busy: picking }} disabled={busy || picking} onPress={() => void pick()} style={[styles.select, (busy || picking) && styles.disabled]}><Text style={styles.selectText}>{picking ? '사진 선택 중…' : '＋ 사진 선택'}</Text></Pressable>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         {items.length ? <Text style={styles.summary}>사진 {items.length}장 중 {finished}장 완료</Text> : <Text style={styles.help}>사진을 선택하면 이 기록에 업로드합니다.</Text>}
         {items.map(item => <View key={item.id} style={styles.card}>
           <View style={styles.row}><Image source={{ uri: item.file.uri }} style={styles.photo} contentFit="cover" /><View style={styles.detail}>
             <Text numberOfLines={2} style={styles.fileName}>{item.file.originalFileName}</Text>
             <Text style={styles.help}>{(item.file.fileSize / 1024 / 1024).toFixed(1)}MB</Text>
-            <Text accessibilityLiveRegion="polite" style={[styles.status, item.phase === 'success' && styles.success, item.phase === 'error' && styles.failure]}>{labels[item.phase]}{item.phase === 'uploading' ? ` ${item.progress}%` : ''}</Text>
+            <Text accessibilityLiveRegion="polite" style={[styles.status, item.phase === 'success' && styles.success, item.phase === 'error' && styles.failure]}>{item.rateLimited ? '요청 제한 · 잠시 대기' : labels[item.phase]}{item.phase === 'uploading' ? ` ${item.progress}%` : ''}</Text>
           </View>{['signing', 'uploading', 'completing'].includes(item.phase) ? <ActivityIndicator color="#208AEF" /> : null}</View>
           {item.phase === 'uploading' || item.phase === 'completing' ? <View accessibilityRole="progressbar" accessibilityLabel={`${item.file.originalFileName} 업로드`} accessibilityValue={{ min: 0, max: 100, now: item.progress }} style={styles.track}><View style={[styles.fill, { width: `${item.progress}%` }]} /></View> : null}
           {item.error ? <Text style={styles.error}>{item.error}</Text> : null}

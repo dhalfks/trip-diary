@@ -27,7 +27,7 @@ function PagePhoto({ image, tall, onRefresh }: { image?: DiaryImage; tall: boole
     {image ? <Image source={{ uri: image.downloadUrl }} accessibilityLabel={image.originalFileName} cachePolicy="none"
       contentFit="contain" style={styles.photo} onLoad={() => setLoading(false)} onError={() => { setFailed(true); setLoading(false); }} /> : null}
     {loading ? <View style={styles.overlay}><ActivityIndicator color="#208AEF" /></View> : null}
-    {!image || failed ? <Pressable accessibilityRole="button" style={styles.overlay} onPress={onRefresh}>
+    {!image || failed ? <Pressable accessibilityRole="button" accessibilityLabel="사진 다시 불러오기" style={styles.overlay} onPress={onRefresh}>
       <Text style={styles.missing}>사진을 사용할 수 없어요</Text><Text style={styles.retry}>사진 다시 불러오기</Text>
     </Pressable> : null}
   </View>;

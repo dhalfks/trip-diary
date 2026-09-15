@@ -15,6 +15,6 @@ export type UploadCompletion = { imageId: string; status: 'COMPLETED' };
 export type UploadPhase = 'queued' | 'signing' | 'uploading' | 'completing' | 'success' | 'error';
 export type UploadCheckpoint = { ticket?: UploadTicket; putSucceeded?: boolean; putAttempted?: boolean; renewTicket?: boolean };
 export type UploadItem = {
-  id: string; file: ImageFile; phase: UploadPhase; progress: number; error?: string;
+  id: string; file: ImageFile; phase: UploadPhase; progress: number; error?: string; rateLimited?: boolean;
   checkpoint: UploadCheckpoint;
 };

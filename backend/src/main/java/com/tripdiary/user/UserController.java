@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @RestController
@@ -14,7 +15,14 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
     private final UserService users;
-    public UserController(UserService users) { this.users = users; }
+    private final AccountDeletionService deletion;
+    public UserController(UserService users, AccountDeletionService deletion) { this.users = users; this.deletion = deletion; }
+
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@AuthenticationPrincipal Jwt jwt) {
+        deletion.delete(UUID.fromString(jwt.getSubject()));
+    }
 
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal Jwt jwt) {

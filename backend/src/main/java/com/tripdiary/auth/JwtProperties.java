@@ -25,6 +25,13 @@ public record JwtProperties(
         requirePositive(refreshTokenTtl, "app.jwt.refresh-token-ttl");
     }
 
+    @Override
+    public String toString() {
+        return "JwtProperties[issuer=" + issuer + ", audience=" + audience
+                + ", accessSecret=[REDACTED], refreshSecret=[REDACTED], accessTokenTtl="
+                + accessTokenTtl + ", refreshTokenTtl=" + refreshTokenTtl + "]";
+    }
+
     private static void requireText(String value, String property) {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(property + " 설정이 필요합니다.");
@@ -43,4 +50,3 @@ public record JwtProperties(
         }
     }
 }
-

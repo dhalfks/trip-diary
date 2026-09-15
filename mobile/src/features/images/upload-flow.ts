@@ -8,6 +8,7 @@ type Dependencies = {
 type Update = (phase: UploadPhase, progress?: number) => void;
 const code = (error: unknown) => (error as { code?: string } | null)?.code;
 const status = (error: unknown) => (error as { status?: number } | null)?.status;
+export const isRateLimited = (error: unknown) => status(error) === 429 || code(error) === 'RATE_LIMIT_EXCEEDED';
 
 /** Mutable checkpoint belongs to one selected file and survives a user-triggered retry. */
 export async function uploadImage(file: ImageFile, checkpoint: UploadCheckpoint, dependencies: Dependencies,

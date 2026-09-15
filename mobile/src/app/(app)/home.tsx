@@ -43,7 +43,8 @@ export default function HomeScreen() {
   return <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
     <View style={styles.header}>
       <View><Text style={styles.brand}>TRIP DIARY</Text><Text style={styles.greeting}>{user?.nickname}님의 여행</Text></View>
-      <Pressable onPress={() => void logout()} hitSlop={10}><Text style={styles.logout}>로그아웃</Text></Pressable>
+      <View style={{ gap: 12 }}><Pressable onPress={() => router.push('/settings')} hitSlop={10}><Text style={styles.logout}>설정</Text></Pressable>
+        <Pressable onPress={() => void logout()} hitSlop={10}><Text style={styles.logout}>로그아웃</Text></Pressable></View>
     </View>
     <FlatList data={trips} keyExtractor={item => item.id}
       contentContainerStyle={[styles.list, trips.length === 0 && styles.emptyList]}

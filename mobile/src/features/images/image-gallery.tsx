@@ -35,7 +35,7 @@ export function ImageGallery({ target: { tripId, dayId, entryId }, refreshKey }:
   }
 
   return <View style={styles.gallery}>
-    <View style={styles.heading}><Text style={styles.label}>사진 {state.images.length}장</Text>{state.loading ? <ActivityIndicator size="small" color="#208AEF" /> : null}</View>
+    <View style={styles.heading}><Text style={styles.label}>사진 {state.images.length}장</Text>{state.loading ? <ActivityIndicator accessibilityLabel="사진 목록 불러오는 중" size="small" color="#208AEF" /> : null}</View>
     {!state.loading && !state.error && !state.images.length ? <Text style={styles.help}>등록된 사진이 없어요.</Text> : null}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photos}>
       {state.images.map(image => <View key={image.id} style={styles.card}>
@@ -59,7 +59,7 @@ function PrivatePhoto({ image, onRetry }: { image: DiaryImage; onRetry(): void }
     <Image source={{ uri: image.downloadUrl }} cachePolicy="none" accessibilityLabel={image.originalFileName}
       contentFit="cover" style={styles.photo} onLoad={() => setLoading(false)} onError={() => { setFailed(true); setLoading(false); }} />
     {loading ? <View style={styles.overlay}><ActivityIndicator color="#208AEF" /></View> : null}
-    {failed ? <Pressable accessibilityRole="button" style={styles.overlay} onPress={event => { event.stopPropagation(); onRetry(); }}>
+    {failed ? <Pressable accessibilityRole="button" accessibilityLabel={`${image.originalFileName} 다시 불러오기`} style={styles.overlay} onPress={event => { event.stopPropagation(); onRetry(); }}>
       <Text style={styles.help}>사진을 불러오지 못했어요</Text><Text style={styles.link}>다시 시도</Text>
     </Pressable> : null}
   </View>;

@@ -28,7 +28,7 @@ export default function DiaryPreviewScreen() {
   const page = previewPage(state.detail, state.index);
   const count = state.detail?.pages.length ?? 0;
   return <SafeAreaView style={styles.safe}>
-    <View style={styles.header}><Pressable onPress={() => router.back()}><Text style={styles.link}>‹ 다이어리</Text></Pressable><Text style={styles.heading}>미리보기</Text><Pressable disabled={state.loading} onPress={() => void store.load()}><Text style={styles.link}>새로고침</Text></Pressable></View>
+    <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="다이어리 목록으로 돌아가기" hitSlop={10} onPress={() => router.back()}><Text style={styles.link}>‹ 다이어리</Text></Pressable><Text accessibilityRole="header" style={styles.heading}>미리보기</Text><Pressable accessibilityRole="button" accessibilityLabel="다이어리 새로고침" hitSlop={10} disabled={state.loading} onPress={() => void store.load()}><Text style={styles.link}>새로고침</Text></Pressable></View>
     {state.detail ? <Text numberOfLines={1} style={styles.bookTitle}>{state.detail.diary.title}</Text> : null}
     {state.loading ? <ActivityIndicator color="#208AEF" style={styles.loading} /> : null}
     {state.error ? <Pressable onPress={() => void store.load()}><Text accessibilityRole="alert" style={styles.error}>{state.error} · 다시 시도</Text></Pressable> : null}
@@ -36,9 +36,9 @@ export default function DiaryPreviewScreen() {
       {page && state.detail ? <DiaryPageView page={page} template={state.detail.diary.templateType} revision={state.revision} onRefresh={() => void store.load()} />
         : !state.loading ? <Text style={styles.empty}>표시할 페이지가 없어요.</Text> : null}
     </ScrollView>
-    <View style={styles.controls}><Pressable accessibilityRole="button" disabled={!count || state.index === 0} onPress={() => store.move(-1)}><Text style={[styles.link, (!count || state.index === 0) && styles.disabled]}>‹ 이전</Text></Pressable>
+    <View style={styles.controls}><Pressable accessibilityRole="button" accessibilityLabel="이전 페이지" disabled={!count || state.index === 0} onPress={() => store.move(-1)}><Text style={[styles.link, (!count || state.index === 0) && styles.disabled]}>‹ 이전</Text></Pressable>
       <Text accessibilityLiveRegion="polite" style={styles.pageNumber}>{count ? state.index + 1 : 0} / {count}</Text>
-      <Pressable accessibilityRole="button" disabled={!count || state.index >= count - 1} onPress={() => store.move(1)}><Text style={[styles.link, (!count || state.index >= count - 1) && styles.disabled]}>다음 ›</Text></Pressable></View>
+      <Pressable accessibilityRole="button" accessibilityLabel="다음 페이지" disabled={!count || state.index >= count - 1} onPress={() => store.move(1)}><Text style={[styles.link, (!count || state.index >= count - 1) && styles.disabled]}>다음 ›</Text></Pressable></View>
   </SafeAreaView>;
 }
 

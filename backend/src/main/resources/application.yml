@@ -1,4 +1,8 @@
 spring:
+  task:
+    scheduling:
+      pool:
+        size: 2
   application:
     name: trip-diary-api
   datasource:
@@ -41,10 +45,42 @@ springdoc:
     tags-sorter: alpha
 
 logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: 'OFF'
+    org.hibernate.orm.jdbc.extract: 'OFF'
+    org.hibernate.orm.jdbc.error: 'OFF'
+    software.amazon.awssdk: WARN
+    com.tripdiary.user.AccountDeletionService: INFO
+    com.tripdiary.global.web.RequestTraceIdFilter: INFO
+    com.tripdiary.image.ImageCleanupService: INFO
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{traceId:-no-trace}] %logger{36} - %msg%n"
 
 app:
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    max-keys: ${RATE_LIMIT_MAX_KEYS:20000}
+    signup:
+      limit: ${RATE_LIMIT_SIGNUP_LIMIT:10}
+      window: ${RATE_LIMIT_SIGNUP_WINDOW:10m}
+    login:
+      limit: ${RATE_LIMIT_LOGIN_LIMIT:30}
+      window: ${RATE_LIMIT_LOGIN_WINDOW:1m}
+    upload-url:
+      limit: ${RATE_LIMIT_UPLOAD_URL_LIMIT:60}
+      window: ${RATE_LIMIT_UPLOAD_URL_WINDOW:1m}
+    complete:
+      limit: ${RATE_LIMIT_COMPLETE_LIMIT:120}
+      window: ${RATE_LIMIT_COMPLETE_WINDOW:1m}
+    diary:
+      limit: ${RATE_LIMIT_DIARY_LIMIT:10}
+      window: ${RATE_LIMIT_DIARY_WINDOW:1m}
+    account:
+      limit: ${RATE_LIMIT_ACCOUNT_LIMIT:5}
+      window: ${RATE_LIMIT_ACCOUNT_WINDOW:10m}
   storage:
     s3:
       region: ${AWS_REGION:ap-northeast-2}
@@ -62,3 +98,10 @@ app:
     refresh-secret: ${JWT_REFRESH_SECRET:trip-diary-local-refresh-secret-change-me}
     access-token-ttl: 15m
     refresh-token-ttl: 30d
+
+image:
+  cleanup:
+    enabled: ${IMAGE_CLEANUP_ENABLED:false}
+    pending-age: ${IMAGE_CLEANUP_PENDING_AGE:24h}
+    fixed-delay: ${IMAGE_CLEANUP_FIXED_DELAY:1h}
+    batch-size: ${IMAGE_CLEANUP_BATCH_SIZE:100}

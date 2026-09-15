@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class ImageService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImageService.class);
     private final ImageRepository images;
     private final DiaryEntryRepository entries;
     private final TripDayRepository days;
@@ -41,6 +42,11 @@ public class ImageService {
         ownedEntry(userId, tripId, dayId, entryId);
         Image image = images.findForDeletion(imageId, entryId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_NOT_FOUND));
+        deleteStored(image);
+    }
+
+    // Caller holds the image row lock and a transaction. Reused by the PENDING cleanup worker.
+    void deleteStored(Image image) {
         requireStorage(image);
         try {
             // S3 is not part of the DB transaction. Keep the row on S3 failure;
@@ -48,7 +54,10 @@ public class ImageService {
             storage.delete(image.getStorageKey());
             images.delete(image);
             images.flush();
-        } catch (IOException exception) { throw new BusinessException(ErrorCode.IMAGE_STORAGE_UNAVAILABLE); }
+        } catch (IOException exception) {
+            log.warn("IMAGE_S3_DELETE_FAILED image={} code=IMAGE_STORAGE_UNAVAILABLE", image.getId());
+            throw new BusinessException(ErrorCode.IMAGE_STORAGE_UNAVAILABLE);
+        }
     }
 
     private ImageViewResponse view(Image image) {

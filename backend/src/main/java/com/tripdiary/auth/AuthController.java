@@ -59,7 +59,7 @@ public class AuthController {
 
         @Override
         public String toString() {
-            return "SignupRequest[email=" + email + ", password=[REDACTED], nickname=" + nickname + "]";
+            return "SignupRequest[email=[REDACTED], password=[REDACTED], nickname=[REDACTED]]";
         }
     }
 
@@ -74,7 +74,7 @@ public class AuthController {
 
         @Override
         public String toString() {
-            return "LoginRequest[email=" + email + ", password=[REDACTED]]";
+            return "LoginRequest[email=[REDACTED], password=[REDACTED]]";
         }
     }
 

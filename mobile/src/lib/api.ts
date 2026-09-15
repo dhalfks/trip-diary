@@ -24,7 +24,11 @@ async function refresh() {
   const refreshToken = adapter.get()?.refreshToken;
   if (!refreshToken) throw new ApiError(401, 'UNAUTHORIZED', '로그인이 필요합니다.');
   refreshing = publicApi<TokenPair>('/auth/refresh', jsonBody({ refreshToken }))
-    .then(async tokens => { await adapter.save(tokens); return tokens; }).finally(() => { refreshing = null; });
+    .then(async tokens => {
+      // A refresh started before logout/account deletion must not restore that session.
+      if (adapter.get()?.refreshToken !== refreshToken) throw new ApiError(401, 'UNAUTHORIZED', '로그인이 필요합니다.');
+      await adapter.save(tokens); return tokens;
+    }).finally(() => { refreshing = null; });
   return refreshing;
 }
 async function request(path: string, init?: RequestInit, token?: string) {
@@ -35,6 +39,7 @@ async function request(path: string, init?: RequestInit, token?: string) {
 }
 async function parse<T>(response: Response): Promise<T> {
   if (response.ok) return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+  if (response.status === 429) throw new ApiError(429, 'RATE_LIMIT_EXCEEDED', '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
   const fallback = { code: 'UNKNOWN_ERROR', message: '요청을 처리하지 못했습니다.', fieldErrors: [] as unknown[] };
   const body = await response.json().catch(() => fallback) as typeof fallback;
   throw new ApiError(response.status, body.code ?? fallback.code, body.message ?? fallback.message, body.fieldErrors);

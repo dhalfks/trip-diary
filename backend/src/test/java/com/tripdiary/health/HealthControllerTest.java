@@ -14,6 +14,8 @@ import com.tripdiary.user.UserRepository;
 
 @WebMvcTest(HealthController.class)
 class HealthControllerTest {
+    @MockitoBean
+    private com.tripdiary.operations.InMemoryRateLimiter rateLimiter;
 
     @MockitoBean
     private UserRepository userRepository;

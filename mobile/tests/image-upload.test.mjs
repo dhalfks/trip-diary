@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { photoMetadata, MAX_IMAGE_BYTES } from '../src/features/images/photo-metadata.ts';
-import { uploadImage } from '../src/features/images/upload-flow.ts';
+import { isRateLimited, uploadImage } from '../src/features/images/upload-flow.ts';
 import { putImage, S3UploadError } from '../src/features/images/s3-upload.ts';
 
 const file = { uri: 'file:///photo.jpg', originalFileName: 'photo.jpg', contentType: 'image/jpeg', fileSize: 1234 };
@@ -18,6 +18,29 @@ function fixture(overrides = {}) {
   } };
 }
 const signal = () => new AbortController().signal;
+
+test('upload-url rate limit is distinct from S3 failure and sends no binary', async () => {
+  const limited = Object.assign(new Error('잠시 후 다시 시도해 주세요.'), { status: 429, code: 'RATE_LIMIT_EXCEEDED' });
+  const { calls, dependencies } = fixture({ initiate: async () => { throw limited; } });
+  const checkpoint = {};
+  await assert.rejects(uploadImage(file, checkpoint, dependencies, () => {}, signal()), error => isRateLimited(error));
+  assert.deepEqual(calls, []); assert.equal(checkpoint.ticket, undefined);
+  assert.equal(isRateLimited(new Error('network error')), false);
+});
+
+test('complete rate limit preserves the successful PUT and retries only completion', async () => {
+  let limited = true;
+  const { calls, dependencies } = fixture({ complete: async imageId => {
+    calls.push(['complete', imageId]);
+    if (limited) throw Object.assign(new Error('잠시 후 다시 시도해 주세요.'), { status: 429 });
+    return { imageId, status: 'COMPLETED' };
+  } });
+  const checkpoint = {};
+  await assert.rejects(uploadImage(file, checkpoint, dependencies, () => {}, signal()), error => isRateLimited(error));
+  assert.equal(checkpoint.putSucceeded, true); assert.equal(checkpoint.ticket.imageId, 'image-1');
+  limited = false; await uploadImage(file, checkpoint, dependencies, () => {}, signal());
+  assert.deepEqual(calls.map(call => call[0]), ['sign', 'put', 'complete', 'complete']);
+});
 
 test('selection metadata uses actual file size and normalizes converted HEIC names', () => {
   const result = photoMetadata({ uri: 'file:///converted.jpg', fileName: 'IMG_001.HEIC', mimeType: 'image/jpeg', fileSize: 400 });

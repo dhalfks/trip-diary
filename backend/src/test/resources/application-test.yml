@@ -9,5 +9,11 @@ spring:
       ddl-auto: validate
 
 app:
+  rate-limit:
+    enabled: false
   security:
     bcrypt-strength: 4
+
+image:
+  cleanup:
+    enabled: false

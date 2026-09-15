@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.tripdiary.global.web.RequestTraceIdFilter;
+import com.tripdiary.operations.RateLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -89,11 +90,19 @@ public class GlobalExceptionHandler {
         return response(exception.getErrorCode(), exception.getMessage(), request, List.of());
     }
 
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimit(RateLimitExceededException exception, HttpServletRequest request) {
+        var result = response(ErrorCode.RATE_LIMIT_EXCEEDED, null, request, List.of());
+        return ResponseEntity.status(result.getStatusCode()).header("Retry-After", Long.toString(exception.retryAfterSeconds()))
+                .cacheControl(org.springframework.http.CacheControl.noStore()).body(result.getBody());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(
             Exception exception,
             HttpServletRequest request) {
-        log.error("Unhandled exception", exception);
+        // Exception messages/causes may include SQL values, request bodies or signed storage URLs.
+        log.error("Unhandled exception type={}", exception.getClass().getSimpleName());
         return response(ErrorCode.INTERNAL_SERVER_ERROR, null, request, List.of());
     }
 
@@ -103,6 +112,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request,
             List<FieldViolation> fieldErrors) {
         HttpStatus status = errorCode.status();
+        request.setAttribute(RequestTraceIdFilter.ERROR_CODE_ATTRIBUTE, errorCode.name());
         ApiErrorResponse body = new ApiErrorResponse(
                 Instant.now(),
                 status.value(),

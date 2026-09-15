@@ -1,6 +1,7 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api, configureApiTokens, jsonBody, publicApi, type TokenPair } from '@/lib/api';
 import { clearTokens, loadTokens, saveTokens } from '@/lib/token-storage';
+import { deleteAccountAndClear } from '@/features/account/account-model';
 
 type User = { id: string; email: string; nickname: string; status: string; createdAt: string; updatedAt: string };
 type AuthValue = {
@@ -8,18 +9,32 @@ type AuthValue = {
   login(email: string, password: string): Promise<void>;
   signup(email: string, password: string, nickname: string): Promise<void>;
   logout(): Promise<void>;
+  deleteAccount(): Promise<void>;
 };
 const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const tokenRef = useRef<TokenPair | null>(null);
+  const sessionEpoch = useRef(0);
   const [user, setUser] = useState<User | null>(null);
   const [initialized, setInitialized] = useState(false);
-  const persist = useCallback(async (tokens: TokenPair) => { await saveTokens(tokens); tokenRef.current = tokens; }, []);
-  const clear = useCallback(async () => { await clearTokens(); tokenRef.current = null; setUser(null); }, []);
+  const persist = useCallback(async (tokens: TokenPair) => {
+    const epoch = sessionEpoch.current;
+    await saveTokens(tokens);
+    if (epoch !== sessionEpoch.current) { await clearTokens(); return; }
+    tokenRef.current = tokens;
+  }, []);
+  const clear = useCallback(async () => {
+    sessionEpoch.current++; tokenRef.current = null;
+    try { await clearTokens(); } finally { setUser(null); }
+  }, []);
 
   useEffect(() => { configureApiTokens({ get: () => tokenRef.current, save: persist, clear }); }, [persist, clear]);
-  const me = useCallback(async () => setUser(await api<User>('/users/me')), []);
+  const me = useCallback(async () => {
+    const epoch = sessionEpoch.current;
+    const currentUser = await api<User>('/users/me');
+    if (epoch === sessionEpoch.current && tokenRef.current) setUser(currentUser);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -46,8 +61,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const refreshToken = tokenRef.current?.refreshToken;
     try { if (refreshToken) await publicApi('/auth/logout', jsonBody({ refreshToken })); } finally { await clear(); }
   }, [clear]);
+  const deleteAccount = useCallback(() => deleteAccountAndClear(
+    () => api<void>('/users/me', { method: 'DELETE' }), clear), [clear]);
 
-  const value = useMemo(() => ({ initialized, isAuthenticated: user !== null, user, login, signup, logout }), [initialized, user, login, signup, logout]);
+  const value = useMemo(() => ({ initialized, isAuthenticated: user !== null, user, login, signup, logout, deleteAccount }), [initialized, user, login, signup, logout, deleteAccount]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {

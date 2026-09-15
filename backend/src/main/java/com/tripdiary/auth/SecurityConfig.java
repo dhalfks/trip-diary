@@ -149,7 +149,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Trace-Id"));
-        configuration.setExposedHeaders(List.of("X-Trace-Id"));
+        configuration.setExposedHeaders(List.of("X-Trace-Id", "Retry-After"));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -186,6 +186,7 @@ public class SecurityConfig {
             HttpServletResponse response,
             ErrorCode errorCode) throws java.io.IOException {
         response.setStatus(errorCode.status().value());
+        request.setAttribute(RequestTraceIdFilter.ERROR_CODE_ATTRIBUTE, errorCode.name());
         response.setContentType("application/json");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         if (errorCode == ErrorCode.UNAUTHORIZED) {

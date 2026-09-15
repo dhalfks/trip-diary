@@ -50,7 +50,7 @@ public class ImageUploadService {
     @Transactional
     public ImageUploadCompletionResponse complete(UUID userId, UUID tripId, UUID dayId, UUID entryId, UUID imageId) {
         ownedEntry(userId, tripId, dayId, entryId);
-        Image image = images.findByIdAndDiaryEntryId(imageId, entryId)
+        Image image = images.findForDeletion(imageId, entryId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_NOT_FOUND));
         if (image.getStatus() == ImageStatus.COMPLETED) return new ImageUploadCompletionResponse(image.getId(), image.getStatus());
         if (image.getStorageType() != storage.storageType()) throw new BusinessException(ErrorCode.IMAGE_STORAGE_UNAVAILABLE);
