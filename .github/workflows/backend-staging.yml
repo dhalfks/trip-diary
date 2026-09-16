@@ -162,7 +162,10 @@ jobs:
               raise SystemExit("Missing staging SSH configuration: " + ", ".join(missing))
           ssh = Path.home() / ".ssh"
           ssh.mkdir(mode=0o700, exist_ok=True)
-          (ssh / "id_staging").write_text(os.environ["SSH_PRIVATE_KEY"], encoding="utf-8")
+          private_key = os.environ["SSH_PRIVATE_KEY"].lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n").strip()
+          if not private_key.startswith("-----BEGIN OPENSSH PRIVATE KEY-----") or not private_key.endswith("-----END OPENSSH PRIVATE KEY-----"):
+              raise SystemExit("STAGING_SSH_PRIVATE_KEY must be a complete multiline OpenSSH private key")
+          (ssh / "id_staging").write_bytes((private_key + "\n").encode("utf-8"))
           (ssh / "id_staging").chmod(0o600)
           (ssh / "known_hosts").write_text(os.environ["SSH_KNOWN_HOSTS"], encoding="utf-8")
           (ssh / "known_hosts").chmod(0o600)
