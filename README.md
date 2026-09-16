@@ -18,7 +18,9 @@ Trip Diary is a mobile travel journal project with an Expo client and a Spring B
 
 1. Copy `.env.example` to `.env` and change the local password if needed.
 2. Start PostgreSQL with `docker compose up -d postgres`.
-3. Start the API with `cd backend` and `gradlew.bat bootRun` on Windows (`./gradlew bootRun` on macOS/Linux).
+3. Start the local-profile API with `cd backend` and `gradlew.bat bootRun` on Windows (`./gradlew bootRun` on macOS/Linux).
+
+Staging uses an explicit profile and runtime-only secrets. See `docs/phase-12a-backend-staging.md` before starting or deploying it.
 4. Install and start the app with `cd mobile`, `npm install`, and `npm start`.
 
 The API is available at `http://localhost:8080`, and its public health endpoint is

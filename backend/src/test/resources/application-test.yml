@@ -13,6 +13,16 @@ app:
     enabled: false
   security:
     bcrypt-strength: 4
+  cors:
+    allowed-origin-patterns: http://localhost:*
+  storage:
+    s3:
+      region: ap-northeast-2
+      bucket: trip-diary-test
+      presign-ttl: 5m
+  jwt:
+    access-secret: trip-diary-test-access-secret-at-least-32-characters
+    refresh-secret: trip-diary-test-refresh-secret-at-least-32-characters
 
 image:
   cleanup:

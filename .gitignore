@@ -33,6 +33,8 @@ backend/logs/
 backend/*.log
 backend/src/main/resources/application-local.yml
 backend/src/main/resources/application-local.yaml
+!backend/src/main/resources/application-local.yml
+!backend/staging.env.example
 
 # Mobile
 mobile/node_modules/

@@ -117,7 +117,7 @@ public class SecurityConfig {
                             "/api/v1/health",
                             "/actuator/health",
                             "/actuator/health/**").permitAll();
-                    if (!environment.acceptsProfiles(Profiles.of("prod"))) {
+                    if (!environment.acceptsProfiles(Profiles.of("production", "prod"))) {
                         authorize.requestMatchers(
                                 "/api-docs",
                                 "/api-docs/**",

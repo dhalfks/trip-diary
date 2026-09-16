@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { photoMetadata, MAX_IMAGE_BYTES } from '../src/features/images/photo-metadata.ts';
+import { resizeDimensions } from '../src/features/images/photo-resize-policy.ts';
 import { isRateLimited, uploadImage } from '../src/features/images/upload-flow.ts';
 import { putImage, S3UploadError } from '../src/features/images/s3-upload.ts';
 
@@ -64,6 +65,11 @@ test('filename is safe and within backend limits', () => {
   const result = photoMetadata({ uri: file.uri, fileName: '../a\\b\n' + 'a'.repeat(300) + '.jpg', fileSize: 1 });
   assert.ok(result.originalFileName.length <= 255);
   assert.doesNotMatch(result.originalFileName, /[/\\\n]/);
+});
+test('large photos are resized to a 2048px long edge while smaller photos stay untouched', () => {
+  assert.deepEqual(resizeDimensions(4000, 3000), { width: 2048, height: null });
+  assert.deepEqual(resizeDimensions(1080, 2340), { width: null, height: 2048 });
+  assert.equal(resizeDimensions(1080, 1920), undefined);
 });
 test('upload signs metadata, PUTs the same file and completes only after PUT', async () => {
   const { calls, dependencies } = fixture();

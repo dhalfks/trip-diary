@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { errorMessage } from '@/lib/api';
 import { imageApi } from './image-api';
 import { preparePhoto } from './photo-file';
+import { resizePhotoForUpload } from './photo-resize';
 import { putImage } from './s3-upload';
 import type { ImageTarget, UploadItem, UploadPhase } from './types';
 import { isRateLimited, uploadImage } from './upload-flow';
@@ -84,7 +85,7 @@ export function ImageUploadModal({ target, title, onClose, onUploaded }: { targe
       const errors: string[] = [];
       for (const asset of result.assets.slice(0, 10)) {
         try {
-          const file = preparePhoto(asset);
+          const file = preparePhoto(await resizePhotoForUpload(asset));
           if ([...queue.current, ...added].some(item => item.file.uri === file.uri)) continue;
           added.push({ id: `photo-${++sequence.current}`, file, phase: 'queued', progress: 0, checkpoint: {} });
         } catch (reason) { errors.push(`${asset.fileName ?? '선택한 사진'}: ${errorMessage(reason)}`); }
