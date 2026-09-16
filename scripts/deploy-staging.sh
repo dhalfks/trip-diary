@@ -50,6 +50,7 @@ trap restore_previous ERR
 docker run -d \
   --name "$container_name" \
   --restart unless-stopped \
+  --network trip-diary-staging \
   --env-file "$runtime_env" \
   --label "com.tripdiary.commit=${image_ref##*:}" \
   -p "127.0.0.1:${host_port}:8080" \
