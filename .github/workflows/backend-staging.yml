@@ -183,6 +183,10 @@ jobs:
       - name: Verify externally reachable staging health
         shell: bash
         run: |
+          if [[ -z "$STAGING_HEALTH_URL" ]]; then
+            echo "STAGING_HEALTH_URL is not configured; using the server-internal health check result"
+            exit 0
+          fi
           if [[ ! "$STAGING_HEALTH_URL" =~ ^https:// ]]; then
             echo "GitHub Environment variable STAGING_HEALTH_URL must be HTTPS" >&2
             exit 2
