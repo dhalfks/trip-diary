@@ -35,9 +35,10 @@ export function ImageGallery({ target: { tripId, dayId, entryId }, refreshKey }:
   }
 
   return <View style={styles.gallery}>
-    <View style={styles.heading}><Text style={styles.label}>사진 {state.images.length}장</Text>{state.loading ? <ActivityIndicator accessibilityLabel="사진 목록 불러오는 중" size="small" color="#208AEF" /> : null}</View>
+    <View style={styles.heading}><Text style={styles.label}>사진 {state.images.length}장</Text>{state.images.length > 1 ? <Text style={styles.swipeHint}>좌우로 밀어 사진 보기</Text> : null}{state.loading ? <ActivityIndicator accessibilityLabel="사진 목록 불러오는 중" size="small" color="#208AEF" /> : null}</View>
     {!state.loading && !state.error && !state.images.length ? <Text style={styles.help}>등록된 사진이 없어요.</Text> : null}
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photos}>
+    <ScrollView horizontal nestedScrollEnabled directionalLockEnabled showsHorizontalScrollIndicator
+      accessibilityRole="scrollbar" accessibilityLabel="기록 사진 목록" contentContainerStyle={styles.photos}>
       {state.images.map(image => <View key={image.id} style={styles.card}>
         <PrivatePhoto key={`${image.downloadUrl}:${state.revision}`} image={image} onRetry={() => void gallery.load()} />
         <Pressable accessibilityRole="button" accessibilityLabel={`${image.originalFileName} 삭제`} disabled={!!state.deletingId}
@@ -67,7 +68,7 @@ function PrivatePhoto({ image, onRetry }: { image: DiaryImage; onRetry(): void }
 
 const styles = StyleSheet.create({
   gallery: { marginTop: 14, gap: 8 }, heading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label: { color: '#33404D', fontWeight: '700', fontSize: 13 }, help: { color: '#65717E', fontSize: 12, textAlign: 'center' },
+  label: { color: '#33404D', fontWeight: '700', fontSize: 13 }, swipeHint: { flex: 1, color: '#65717E', fontSize: 12, textAlign: 'right' }, help: { color: '#65717E', fontSize: 12, textAlign: 'center' },
   photos: { gap: 10 }, card: { width: 148 }, frame: { width: 148, height: 120, borderRadius: 10, overflow: 'hidden', backgroundColor: '#EDF2F7' },
   photo: { width: '100%', height: '100%' }, overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', padding: 8, backgroundColor: '#EDF2F7' },
   deleteButton: { alignItems: 'center', paddingVertical: 8 }, delete: { color: '#B42318', fontSize: 12, fontWeight: '700' },

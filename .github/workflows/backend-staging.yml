@@ -1,0 +1,191 @@
+name: Backend CI and staging deployment
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "scripts/deploy-staging.sh"
+      - ".github/workflows/backend-staging.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "scripts/deploy-staging.sh"
+      - ".github/workflows/backend-staging.yml"
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: "Optional existing 40-character commit SHA to redeploy/rollback"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-staging
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Test and build Backend image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test and package
+        working-directory: backend
+        run: |
+          chmod +x gradlew
+          ./gradlew test bootJar
+      - name: Build image without secrets
+        run: docker build --tag trip-diary-backend:ci ./backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/build/libs/trip-diary-api-*.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy-staging:
+    name: Deploy immutable image to staging
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${{ secrets.CORS_ALLOWED_ORIGIN_PATTERNS }}
+      SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      STAGING_HEALTH_URL: ${{ vars.STAGING_HEALTH_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        if: inputs.image_sha == ''
+        with:
+          name: backend-jar
+          path: backend/build/libs
+      - name: Select immutable image
+        id: image
+        shell: bash
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          target_sha="${{ inputs.image_sha || github.sha }}"
+          if [[ ! "$target_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "image_sha must be a full 40-character commit SHA" >&2
+            exit 2
+          fi
+          echo "ref=ghcr.io/${repository}/backend:${target_sha}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        if: inputs.image_sha == ''
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push commit image
+        if: inputs.image_sha == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: ${{ steps.image.outputs.ref }}
+      - name: Create protected staging environment file
+        shell: bash
+        env:
+          S3_PRESIGN_TTL: ${{ vars.S3_PRESIGN_TTL || '5m' }}
+          RATE_LIMIT_ENABLED: ${{ vars.RATE_LIMIT_ENABLED || 'true' }}
+          IMAGE_CLEANUP_ENABLED: ${{ vars.IMAGE_CLEANUP_ENABLED || 'false' }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          required = [
+              "DATABASE_URL", "DATABASE_USERNAME", "DATABASE_PASSWORD",
+              "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET",
+              "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "CORS_ALLOWED_ORIGIN_PATTERNS",
+          ]
+          optional = ["AWS_SESSION_TOKEN", "KAKAO_REST_API_KEY", "SENTRY_DSN"]
+          settings = {
+              "SPRING_PROFILES_ACTIVE": "staging",
+              "S3_PRESIGN_TTL": os.environ["S3_PRESIGN_TTL"],
+              "RATE_LIMIT_ENABLED": os.environ["RATE_LIMIT_ENABLED"],
+              "IMAGE_CLEANUP_ENABLED": os.environ["IMAGE_CLEANUP_ENABLED"],
+          }
+          for name in required:
+              value = os.environ.get(name, "")
+              if not value:
+                  raise SystemExit(f"Required staging secret is missing: {name}")
+              settings[name] = value
+          for name in optional:
+              if os.environ.get(name):
+                  settings[name] = os.environ[name]
+          for name, value in settings.items():
+              if "\n" in value or "\r" in value:
+                  raise SystemExit(f"Multiline values are not allowed in runtime env: {name}")
+          path = Path("staging-runtime.env")
+          path.write_text("".join(f"{key}={value}\n" for key, value in settings.items()), encoding="utf-8")
+          path.chmod(0o600)
+          PY
+      - name: Configure verified SSH host
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          required = ["SSH_PRIVATE_KEY", "SSH_KNOWN_HOSTS", "SSH_HOST", "SSH_USER"]
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit("Missing staging SSH configuration: " + ", ".join(missing))
+          ssh = Path.home() / ".ssh"
+          ssh.mkdir(mode=0o700, exist_ok=True)
+          (ssh / "id_staging").write_text(os.environ["SSH_PRIVATE_KEY"], encoding="utf-8")
+          (ssh / "id_staging").chmod(0o600)
+          (ssh / "known_hosts").write_text(os.environ["SSH_KNOWN_HOSTS"], encoding="utf-8")
+          (ssh / "known_hosts").chmod(0o600)
+          PY
+      - name: Deploy and check health on staging server
+        shell: bash
+        run: |
+          port="${SSH_PORT:-22}"
+          remote_env="trip-diary-staging-${GITHUB_SHA}.env"
+          remote_script="trip-diary-deploy-${GITHUB_SHA}.sh"
+          ssh_options=(-i "$HOME/.ssh/id_staging" -p "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp_options=(-i "$HOME/.ssh/id_staging" -P "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${scp_options[@]}" staging-runtime.env "$SSH_USER@$SSH_HOST:$remote_env"
+          scp "${scp_options[@]}" scripts/deploy-staging.sh "$SSH_USER@$SSH_HOST:$remote_script"
+          ssh "${ssh_options[@]}" "$SSH_USER@$SSH_HOST" \
+            "chmod 700 '$remote_script' && './$remote_script' '${{ steps.image.outputs.ref }}' '$remote_env'; result=\$?; rm -f '$remote_script' '$remote_env'; exit \$result"
+          rm -f staging-runtime.env
+      - name: Verify externally reachable staging health
+        shell: bash
+        run: |
+          if [[ ! "$STAGING_HEALTH_URL" =~ ^https:// ]]; then
+            echo "GitHub Environment variable STAGING_HEALTH_URL must be HTTPS" >&2
+            exit 2
+          fi
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$STAGING_HEALTH_URL" \
+            | grep -q '"status":"UP"'

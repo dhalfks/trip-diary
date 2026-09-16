@@ -336,4 +336,3 @@ Backend 코드 및 DB Migration도 Phase 6에서 변경하지 않았다.
 * Reanimated animation
 
 실제 기기 테스트가 완료되기 전까지 Phase 6을 완전한 출시 검증으로 간주하지 않는다.
-ㅌ

@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/trip_diary}
+    username: ${DATABASE_USERNAME:trip_diary}
+    password: ${DATABASE_PASSWORD:change-me-for-local-development}
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+  storage:
+    s3:
+      region: ${AWS_REGION:ap-northeast-2}
+      bucket: ${S3_BUCKET:}
+      presign-ttl: ${S3_PRESIGN_TTL:5m}
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:trip-diary-local-access-secret-change-me}
+    refresh-secret: ${JWT_REFRESH_SECRET:trip-diary-local-refresh-secret-change-me}
