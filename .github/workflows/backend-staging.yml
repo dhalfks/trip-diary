@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "backend/**"
+      - "web/**"
       - "scripts/deploy-staging.sh"
       - ".github/workflows/backend-staging.yml"
   push:
     branches: [main]
     paths:
       - "backend/**"
+      - "web/**"
       - "scripts/deploy-staging.sh"
       - ".github/workflows/backend-staging.yml"
   workflow_dispatch:
@@ -183,6 +185,29 @@ jobs:
           ssh "${ssh_options[@]}" "$SSH_USER@$SSH_HOST" \
             "chmod 700 '$remote_script' && './$remote_script' '${{ steps.image.outputs.ref }}' '$remote_env'; result=\$?; rm -f '$remote_script' '$remote_env'; exit \$result"
           rm -f staging-runtime.env
+      - name: Deploy static web pages
+        shell: bash
+        run: |
+          port="${SSH_PORT:-22}"
+          remote_dir="trip-diary-web-${GITHUB_SHA}"
+          ssh_options=(-i "$HOME/.ssh/id_staging" -p "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp_options=(-i "$HOME/.ssh/id_staging" -P "$port" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+
+          ssh "${ssh_options[@]}" "$SSH_USER@$SSH_HOST" \
+            "mkdir -p '/tmp/$remote_dir'"
+
+          scp "${scp_options[@]}" \
+            web/privacy.html \
+            web/terms.html \
+            web/account-deletion.html \
+            "$SSH_USER@$SSH_HOST:/tmp/$remote_dir/"
+
+          ssh "${ssh_options[@]}" "$SSH_USER@$SSH_HOST" \
+            "sudo install -d -m 755 /var/www/tripdiary && \
+             sudo install -m 644 '/tmp/$remote_dir/privacy.html' /var/www/tripdiary/privacy.html && \
+             sudo install -m 644 '/tmp/$remote_dir/terms.html' /var/www/tripdiary/terms.html && \
+             sudo install -m 644 '/tmp/$remote_dir/account-deletion.html' /var/www/tripdiary/account-deletion.html && \
+             rm -rf '/tmp/$remote_dir'"
       - name: Verify externally reachable staging health
         shell: bash
         run: |
