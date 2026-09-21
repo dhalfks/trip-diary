@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useAuth } from '@/features/auth/auth-context';
 import { ScreenState } from '@/features/trips/screen-state';
 import { tripApi } from '@/features/trips/trip-api';
@@ -43,7 +43,7 @@ export default function HomeScreen() {
   return <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
     <View style={styles.header}>
       <View><Text style={styles.brand}>TRIP DIARY</Text><Text style={styles.greeting}>{user?.nickname}님의 여행</Text></View>
-      <View style={{ gap: 12 }}><Pressable onPress={() => router.push('/settings')} hitSlop={10}><Text style={styles.logout}>설정</Text></Pressable>
+      <View style={{ gap: 10 }}><Pressable style={styles.mapButton} onPress={() => router.push('/trips/map' as Href)} hitSlop={10}><Text style={styles.mapButtonText}>여행 지도</Text></Pressable><Pressable onPress={() => router.push('/settings')} hitSlop={10}><Text style={styles.logout}>설정</Text></Pressable>
         <Pressable onPress={() => void logout()} hitSlop={10}><Text style={styles.logout}>로그아웃</Text></Pressable></View>
     </View>
     <FlatList data={trips} keyExtractor={item => item.id}
@@ -65,7 +65,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F7FAFC' }, header: { paddingHorizontal: 24, paddingVertical: 18, backgroundColor: '#FFF', borderBottomColor: '#E7EBEF', borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { color: '#208AEF', fontSize: 12, fontWeight: '900', letterSpacing: 1.8 }, greeting: { color: '#17212B', fontSize: 25, fontWeight: '800', marginTop: 5 }, logout: { color: '#65717E', fontWeight: '700' },
+  brand: { color: '#208AEF', fontSize: 12, fontWeight: '900', letterSpacing: 1.8 }, greeting: { color: '#17212B', fontSize: 25, fontWeight: '800', marginTop: 5 }, mapButton: { backgroundColor: '#208AEF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center' }, mapButtonText: { color: '#FFF', fontWeight: '800' }, logout: { color: '#65717E', fontWeight: '700' },
   list: { padding: 20, paddingBottom: 110 }, emptyList: { flexGrow: 1 }, count: { color: '#65717E', fontSize: 14, marginBottom: 12 },
   card: { backgroundColor: '#FFF', borderRadius: 18, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E7EBEF', shadowColor: '#17212B', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   pressed: { opacity: 0.72 }, cardTop: { flexDirection: 'row', alignItems: 'center' }, cardTitle: { flex: 1, color: '#17212B', fontSize: 20, fontWeight: '800' }, chevron: { color: '#A0A9B2', fontSize: 30 },

@@ -55,6 +55,7 @@ function validatePublicReleaseUrl(appEnvironment, name, value) {
 
 module.exports = ({ config }) => {
   const appEnvironment = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
+  const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
   validatePublicApiUrl(appEnvironment, process.env.EXPO_PUBLIC_API_BASE_URL);
   validatePublicReleaseUrl(
     appEnvironment,
@@ -67,6 +68,10 @@ module.exports = ({ config }) => {
     process.env.EXPO_PUBLIC_TERMS_URL,
   );
 
+  if (process.env.EAS_BUILD && !googleMapsApiKey) {
+    throw new Error('GOOGLE_MAPS_API_KEY must be configured for Android builds.');
+  }
+
   return {
     ...baseConfig.expo,
     ...config,
@@ -74,6 +79,21 @@ module.exports = ({ config }) => {
       ...baseConfig.expo.extra,
       ...config.extra,
       appEnvironment,
+    },
+    android: {
+      ...baseConfig.expo.android,
+      ...config.android,
+      ...(googleMapsApiKey ? {
+        config: {
+          ...baseConfig.expo.android?.config,
+          ...config.android?.config,
+          googleMaps: {
+            ...baseConfig.expo.android?.config?.googleMaps,
+            ...config.android?.config?.googleMaps,
+            apiKey: googleMapsApiKey,
+          },
+        },
+      } : {}),
     },
   };
 };
