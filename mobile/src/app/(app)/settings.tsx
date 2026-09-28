@@ -17,7 +17,7 @@ export default function SettingsScreen() {
     <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="이전 화면으로 돌아가기" hitSlop={10} disabled={state.busy} onPress={() => router.back()}><Text style={styles.link}>‹ 돌아가기</Text></Pressable><Text accessibilityRole="header" style={styles.heading}>설정</Text></View>
     <ScrollView contentContainerStyle={styles.content}>
       {menu.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} disabled={state.busy}
-        onPress={() => item.id === 'delete' ? store.request() : void openPolicy(item.url, Linking.openURL).then(setNotice)} style={styles.menu}>
+        onPress={() => item.id === 'delete' ? store.request() : void openPolicy(item.url, url => Linking.openURL(url)).then(setNotice)} style={styles.menu}>
         <Text style={item.id === 'delete' ? styles.danger : styles.label}>{item.label}</Text>
         <Text style={styles.help}>{item.id !== 'delete' && !item.url ? '준비 중' : '›'}</Text>
       </Pressable>)}
