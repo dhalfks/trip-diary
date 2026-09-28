@@ -1,5 +1,8 @@
 export const deletionWarning = '회원 정보, 여행, 일정, 기록과 생성한 다이어리가 삭제되며 복구할 수 없습니다. 사진도 삭제 처리됩니다. 저장소 오류가 발생한 사진은 후속 정리될 수 있습니다.';
 
+export const PRIVACY_POLICY_URL = 'https://tripdiary.co.kr/privacy.html';
+export const TERMS_URL = 'https://tripdiary.co.kr/terms.html';
+
 export function accountMenu(privacyUrl?: string, termsUrl?: string) {
   const url = (value?: string) => {
     try { const parsed = new URL(value?.trim() ?? ''); return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? parsed.toString() : undefined; }
