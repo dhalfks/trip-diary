@@ -23,6 +23,18 @@
         "EXPO_PUBLIC_APP_ENV": "preview"
       }
     },
+    "production-apk": {
+      "distribution": "internal",
+      "environment": "production",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://tripdiary.co.kr/privacy.html",
+        "EXPO_PUBLIC_TERMS_URL": "https://tripdiary.co.kr/terms.html"
+      }
+    },
     "production": {
       "distribution": "store",
       "environment": "production",

@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { accountMenu, openPolicy, createAccountDeletionStore, deleteAccountAndClear, deletionWarning, PRIVACY_POLICY_URL, TERMS_URL } from '../src/features/account/account-model.ts';
+import { accountMenu, openPolicy, createAccountDeletionStore, deleteAccountAndClear, deletionWarning, ACCOUNT_DELETION_URL, PRIVACY_POLICY_URL, TERMS_URL } from '../src/features/account/account-model.ts';
 
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 
 test('settings offers privacy, terms and account deletion with honest placeholders', () => {
   const menu = accountMenu();
-  assert.deepEqual(menu.map(item => item.label), ['개인정보처리방침', '이용약관', '회원 탈퇴']);
-  assert.equal(menu[0].url, undefined); assert.equal(menu[1].url, undefined);
+  assert.deepEqual(menu.map(item => item.label), ['개인정보처리방침', '이용약관', '회원탈퇴 안내/절차', '회원 탈퇴']);
+  assert.equal(menu[0].url, undefined); assert.equal(menu[1].url, undefined); assert.equal(menu[2].url, undefined);
   assert.ok(deletionWarning.includes('복구할 수 없습니다'));
 });
 
@@ -24,6 +24,7 @@ test('published policy links require HTTPS and reject credentials or executable 
 test('settings has canonical production policy URLs as build-independent fallbacks', () => {
   assert.equal(PRIVACY_POLICY_URL, 'https://tripdiary.co.kr/privacy.html');
   assert.equal(TERMS_URL, 'https://tripdiary.co.kr/terms.html');
+  assert.equal(ACCOUNT_DELETION_URL, 'https://tripdiary.co.kr/account-deletion.html');
 });
 
 test('policy link opens the configured page and handles placeholders and failures', async () => {

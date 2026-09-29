@@ -2,10 +2,10 @@ import { router } from 'expo-router';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { accountMenu, createAccountDeletionStore, deletionWarning, openPolicy, PRIVACY_POLICY_URL, TERMS_URL } from '@/features/account/account-model';
+import { ACCOUNT_DELETION_URL, accountMenu, createAccountDeletionStore, deletionWarning, openPolicy, PRIVACY_POLICY_URL, TERMS_URL } from '@/features/account/account-model';
 import { useAuth } from '@/features/auth/auth-context';
 
-const menu = accountMenu(PRIVACY_POLICY_URL, TERMS_URL);
+const menu = accountMenu(PRIVACY_POLICY_URL, TERMS_URL, ACCOUNT_DELETION_URL);
 
 export default function SettingsScreen() {
   const { deleteAccount } = useAuth();

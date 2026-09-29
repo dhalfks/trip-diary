@@ -2,8 +2,9 @@ export const deletionWarning = '회원 정보, 여행, 일정, 기록과 생성�
 
 export const PRIVACY_POLICY_URL = 'https://tripdiary.co.kr/privacy.html';
 export const TERMS_URL = 'https://tripdiary.co.kr/terms.html';
+export const ACCOUNT_DELETION_URL = 'https://tripdiary.co.kr/account-deletion.html';
 
-export function accountMenu(privacyUrl?: string, termsUrl?: string) {
+export function accountMenu(privacyUrl?: string, termsUrl?: string, accountDeletionUrl?: string) {
   const url = (value?: string) => {
     try { const parsed = new URL(value?.trim() ?? ''); return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? parsed.toString() : undefined; }
     catch { return undefined; }
@@ -11,6 +12,7 @@ export function accountMenu(privacyUrl?: string, termsUrl?: string) {
   return [
     { id: 'privacy', label: '개인정보처리방침', url: url(privacyUrl) },
     { id: 'terms', label: '이용약관', url: url(termsUrl) },
+    { id: 'deletion-guide', label: '회원탈퇴 안내/절차', url: url(accountDeletionUrl) },
     { id: 'delete', label: '회원 탈퇴', url: undefined },
   ];
 }
