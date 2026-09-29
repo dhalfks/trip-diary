@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# Local EAS / Play signing artifacts
+pepk.jar
+output.zip
+expo-config.json

@@ -30,6 +30,7 @@
         "buildType": "apk"
       },
       "env": {
+        "EAS_GRADLE_CACHE": "1",
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://tripdiary.co.kr/privacy.html",
         "EXPO_PUBLIC_TERMS_URL": "https://tripdiary.co.kr/terms.html"
@@ -43,6 +44,7 @@
         "buildType": "app-bundle"
       },
       "env": {
+        "EAS_GRADLE_CACHE": "1",
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://tripdiary.co.kr/privacy.html",
         "EXPO_PUBLIC_TERMS_URL": "https://tripdiary.co.kr/terms.html"
